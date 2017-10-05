@@ -1,0 +1,7 @@
+#!/bin/bash
+
+service isc-dhcp-server stop
+ifconfig wlan0 down
+#echo "stop service & reboot in 5 seconds" &
+#sleep 5
+#reboot

